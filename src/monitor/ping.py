@@ -1,5 +1,3 @@
-# Author: Grayson Molnar
-# version: 0.1.4
 import subprocess
 import re
 from datetime import datetime
@@ -13,6 +11,7 @@ def ping(host):
     """
     
     response = {
+        "target": host,
         "timestamp": None,
         "status": None,
         "latency_ms": None
@@ -33,7 +32,7 @@ def ping(host):
             ["ping", "-n", "1", "-w", "1000", host], 
             capture_output=True, 
             text=True,
-            timeout=2
+            timeout=5
         ) 
         
         # If subprocess command was successful (== 0)
@@ -42,11 +41,11 @@ def ping(host):
             response.update({"status": "success"})
             
             # Extract the response time (all after "time=" or "time<") from the output with regex
-            match = re.search(r"time[=<]\s*(\d+)\s*ms", out.stdout)
+            match_time = re.search(r"time[=<]\s*(\d+)\s*ms", out.stdout)
             
             # If response time is found, return it, otherwise return "reachable"
-            if match:
-                response.update({"latency_ms": int(match.group(1))})
+            if match_time:
+                response.update({"latency_ms": int(match_time.group(1))})
             return response
         
         else:
