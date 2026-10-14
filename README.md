@@ -1,5 +1,5 @@
-## Netpeer
+# Netpeer
 
-# Network Visualizer
+## Network Visualizer Tool
 
 WIP
