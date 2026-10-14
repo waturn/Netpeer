@@ -39,7 +39,10 @@ def handle_ping(target, interval):
             final_stats.update_ping(response)
             
             # Print the formatted response
-            print(f"[{response['timestamp']}] {status} | {message}")
+            if final_stats.spike is True:
+                print(f"[{response['timestamp']}] {status} | {message} SPIKE")
+            else:
+                print(f"[{response['timestamp']}] {status} | {message}")
             
             # Calculate the elapsed time since the start of the ping
             elapsed = monotonic() - start_time
@@ -61,20 +64,19 @@ def sessionStats(stats, target):
     print(f"{'Packet Errors:':<20}{stats.error_requests}")
     
     # Calculate packet loss percentage based on total requests and failed requests
-    packet_loss = stats.packet_loss()
+    packet_loss = stats.get_packet_loss()
     if packet_loss is not None:
         print(f"{'Packet Loss:':<20}{packet_loss:.2f}%")
     else:
         print(f"{'Packet Loss:':<20}N/A")
-    
     print()
     
     # Calculate minimum and maximum latency from all responses
     if stats.latencies:
         min_latency = min(stats.latencies)
         max_latency = max(stats.latencies)
-        print(f"{'Minimum Latency:':<20}{min_latency:.2f} ms")
-        print(f"{'Maximum Latency:':<20}{max_latency:.2f} ms")
+        print(f"{'Minimum Latency:':<20}{min_latency} ms")
+        print(f"{'Maximum Latency:':<20}{max_latency} ms")
     else:
         print(f"{'Minimum Latency:':<20}N/A")
         print(f"{'Maximum Latency:':<20}N/A")
@@ -85,6 +87,28 @@ def sessionStats(stats, target):
         print(f"{'Average Latency:':<20}{avg_latency:.2f} ms")
     else:
         print(f"{'Average Latency:':<20}N/A")
+    print()
+
+    # Print the jitter values
+    if stats.jitter:
+        min_jitter = min(stats.jitter)
+        max_jitter = max(stats.jitter)
+        print(f"{'Minimum Jitter:':<20}{min_jitter} ms")
+        print(f"{'Maximum Jitter:':<20}{max_jitter} ms")
+    else:
+        print(f"{'Minimum Jitter:':<20}N/A")
+        print(f"{'Maximum Jitter:':<20}N/A")
+        
+    # Calculate and print the average jitter if there were jitter values
+    avg_jitter = stats.average_jitter()
+    if avg_jitter is not None:
+        print(f"{'Average Jitter:':<20}{avg_jitter:.2f} ms")
+    else:
+        print(f"{'Average Jitter:':<20}N/A")
+    print()
+    
+    print(f"{'Latency Spikes:':<20}{stats.spike_count}")
+    print(f"{'Connection Status:':<20}{stats.determineStatus()}")
     print("-------------------------------")
 
 def startup(target, interval):
@@ -98,6 +122,7 @@ def startup(target, interval):
 # Main method
 def main():
     # Test suite
-    startup("google.com", 1)
+    # 194.29.100.26: AU server
+    startup("google.co.uk", 1)
 if __name__ == "__main__":
     main()
