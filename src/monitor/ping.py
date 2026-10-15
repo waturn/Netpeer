@@ -1,6 +1,6 @@
 import subprocess
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 
 def ping(host):
     """
@@ -18,8 +18,8 @@ def ping(host):
     }
     
     # Capture runtime timestamp and format
-    time = datetime.now()
-    response.update({"timestamp": time.strftime('%H:%M:%S')})
+    time = datetime.now(timezone.utc)
+    response["timestamp"] = time.isoformat(timespec="seconds")
     
     # Check if host value is empty
     if not host or not host.strip():

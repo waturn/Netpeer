@@ -1,22 +1,26 @@
 class Statistics:
+    """
+    Class to track and manage statistics for ping responses, including total requests, successful requests, failed requests, error requests, latencies, jitter, and spike detection.
+    """
     def __init__(self):
-        self.total_requests = 0
-        self.successful_requests = 0
-        self.failed_requests = 0
-        self.error_requests = 0
+        self.total_requests = 0    # Total number of ping requests made
+        self.successful_requests = 0    # Number of successful ping responses
+        self.failed_requests = 0    # Number of failed ping responses
+        self.error_requests = 0    # Number of ping responses that resulted in errors
         
-        self.latencies = []
-        self.prev_latency = None
-        self.jitter = []
-        self.spike = None
-        self.spike_count = 0
+        self.latencies = []    # List of latencies (in milliseconds) for successful ping responses
+        self.prev_latency = None    # The latency of the previous successful ping response
+        self.jitter = []    # List of jitter values calculated from the differences between consecutive latencies
+        self.spike = None   # Flag indicating if a latency spike was detected in the current ping response
+        self.spike_count = 0    # Count of detected latency spikes
         
-        self.packet_loss_percent = 0.0
+        self.packet_loss_percent = 0.0    # Percentage of packet loss calculated from total requests and failed requests
         
     def update_ping(self, response):
-        # Update the statistics based on the latest ping response
+        # Update the statistics instance based on the latest ping response
         self.total_requests += 1
         self.spike = False
+        self.curr_jitter = None
         
         if response["status"] == "success":
             self.successful_requests += 1
@@ -27,6 +31,7 @@ class Statistics:
                 if self.prev_latency is not None:
                     # Calculate jitter
                     jitter_val = abs(response["latency_ms"] - self.prev_latency)
+                    self.curr_jitter = jitter_val
                     self.jitter.append(jitter_val)
                     
                     # Latency spike detection
@@ -44,10 +49,10 @@ class Statistics:
             self.error_requests += 1
     
     def get_packet_loss(self):
+        # Calculate and return the packet loss percentage based on total requests and failed requests
         valid_packets = self.successful_requests + self.failed_requests
         if valid_packets == 0:
             return None
-        # Calculate packet loss percentage based on total requests and failed requests
         self.packet_loss_percent = (self.failed_requests / valid_packets) * 100
         return self.packet_loss_percent
     
@@ -64,6 +69,7 @@ class Statistics:
         return sum(self.jitter) / len(self.jitter)
     
     def determineStatus(self):
+        # Determine the overall status of the ping session based on packet loss and spike rate
         valid_packets = self.successful_requests + self.failed_requests
         spike_rate = self.spike_count / valid_packets if valid_packets > 0 else 0
         packet_loss = self.get_packet_loss() if valid_packets > 0 else None

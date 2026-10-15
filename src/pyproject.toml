@@ -1,6 +1,6 @@
 [project]
 name = "Netpeer"
-version = "0.3"
+version = "0.4.0"
 description = "A (wip) network visualizer"
 authors = [
     { name = "Grayson Molnar", email = "graysonmolnar12@gmail.com" }
