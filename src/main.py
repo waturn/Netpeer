@@ -61,7 +61,11 @@ def handle_ping(target, interval, session_id, result_callback=None, should_stop=
             )
 
             if result_callback is not None:
-                result_callback(response)
+                result_callback({
+                    **response,
+                    "jitter_ms": final_stats.curr_jitter,
+                    "is_spike": bool(final_stats.spike)
+                })
 
             # Print the formatted response
             if final_stats.spike is True:

@@ -9,7 +9,7 @@ def main():
     init_database()
     
     app = QApplication(sys.argv)
-    app.setStyleSheet("QMainWindow { background-color: #1e1e2f; }")
+    app.setStyleSheet("QMainWindow { background-color: #07080d; }")
 
     window = Dashboard()
     window.show()
