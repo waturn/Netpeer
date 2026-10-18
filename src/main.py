@@ -22,13 +22,13 @@ def clear_terminal():
     # Clear the terminal based on the operating system
     os.system('cls' if os.name == 'nt' else 'clear')
 
-def handle_ping(target, interval, session_id):
+def handle_ping(target, interval, session_id, result_callback=None, should_stop=None):
     # Ping the target at a set interval, format, and feed the response to the Statistics class to print
     # 
     # Runs indefinitely until interrupted by the user (Ctrl+C)
     final_stats = Statistics()
     try:
-        while True:
+        while should_stop is None or not should_stop():
             # Start a monotonic timer
             start_time = monotonic()
             
@@ -52,13 +52,16 @@ def handle_ping(target, interval, session_id):
             # Insert the ping result into the database
             insert_ping_result(
                 session_id,
-                timestamp,
+                response["timestamp"],
                 status,
                 response.get("latency_ms"),
                 final_stats.curr_jitter,
                 int(final_stats.spike),
                 response.get("error")
             )
+
+            if result_callback is not None:
+                result_callback(response)
 
             # Print the formatted response
             if final_stats.spike is True:
@@ -69,7 +72,13 @@ def handle_ping(target, interval, session_id):
             # Calculate the elapsed time since the start of the ping
             elapsed = monotonic() - start_time
             # Sleep for the remaining time to maintain the interval, but not less than 0
-            sleep(max(0, interval - elapsed))
+            remaining = max(0, interval - elapsed)
+            while remaining > 0 and (should_stop is None or not should_stop()):
+                wait_time = min(remaining, 0.1)
+                sleep(wait_time)
+                remaining -= wait_time
+        
+        update_session_end_time(session_id, datetime.now(timezone.utc).isoformat())
     except KeyboardInterrupt:
         print("\n^C")
         clear_terminal()
@@ -211,7 +220,7 @@ def display_sessions():
             f"{ended_time:<25}"
         )
 
-def startup(target, interval):
+def startup(target, interval, result_callback=None, should_stop=None):
     # Insert a new session
     session_id = insert_session(target, datetime.now(timezone.utc).isoformat())
     
@@ -220,7 +229,7 @@ def startup(target, interval):
     print_menu()
     print("Target: " + target)
     print("Interval: " + str(interval) + " seconds\n")
-    handle_ping(target, interval, session_id)
+    handle_ping(target, interval, session_id, result_callback, should_stop)
 
 def print_menu():
     print("========= NETPEER " + get_version_number() + " ==========")
