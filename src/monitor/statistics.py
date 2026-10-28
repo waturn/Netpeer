@@ -73,16 +73,19 @@ class Statistics:
         valid_packets = self.successful_requests + self.failed_requests
         spike_rate = self.spike_count / valid_packets if valid_packets > 0 else 0
         packet_loss = self.get_packet_loss() if valid_packets > 0 else None
+        avg_jitter = self.average_jitter()
         
-        if valid_packets < 1:
+        if valid_packets == 0:
             return "UNKNOWN"
         elif packet_loss == 100:
             return "UNREACHABLE"
+        elif valid_packets < 6:
+            return "CALCULATING..."
         elif packet_loss > 20:
             return "POOR"
-        elif packet_loss > 5 or spike_rate > 0.1:
+        elif packet_loss > 5 or spike_rate > 0.1 or (avg_jitter is not None and avg_jitter > 15):
             return "UNSTABLE"
-        elif packet_loss > 0 or self.spike_count > 0:
+        elif packet_loss > 0 or self.spike_count > 0 or (avg_jitter is not None and avg_jitter > 5):
             return "FINE"
         else:
             return "EXCELLENT"

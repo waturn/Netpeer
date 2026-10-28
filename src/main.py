@@ -64,14 +64,17 @@ def handle_ping(target, interval, session_id, result_callback=None, should_stop=
                 result_callback({
                     **response,
                     "jitter_ms": final_stats.curr_jitter,
-                    "is_spike": bool(final_stats.spike)
+                    "spike": bool(final_stats.spike),
+                    "is_spike": bool(final_stats.spike),
+                    "overall_status": final_stats.determineStatus()
                 })
 
             # Print the formatted response
-            if final_stats.spike is True:
-                print(f"[{display_time}] {status} | {message} SPIKE")
-            else:
-                print(f"[{display_time}] {status} | {message}")
+            if result_callback is None:
+                if final_stats.spike is True:
+                    print(f"[{display_time}] {status} | {message} SPIKE")
+                else:
+                    print(f"[{display_time}] {status} | {message}")
             
             # Calculate the elapsed time since the start of the ping
             elapsed = monotonic() - start_time

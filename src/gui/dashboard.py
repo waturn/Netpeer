@@ -1,4 +1,4 @@
-from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QTextEdit, QListWidget, QSpinBox, QGridLayout
+from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QTextEdit, QListWidget, QSpinBox
 from PySide6.QtCore import Qt
 
 import pyqtgraph as pg
@@ -53,15 +53,24 @@ class Dashboard(QMainWindow):
         output_container.setStyleSheet("background-color: #04091c; border-radius: 0px; border: 1px solid #1e1e2f;")
         window_layout.addWidget(output_container)
         
-        output_layout = QGridLayout()
+        output_layout = QHBoxLayout()
         output_container.setLayout(output_layout)
         output_layout.setSpacing(8)
+
+        plots_layout = QVBoxLayout()
+        plots_layout.setSpacing(8)
+
+        output_details_layout = QVBoxLayout()
+        output_details_layout.setSpacing(8)
         
         
-        # Graph layout
-        self.ping_numbers = []
+        # Live Latency layout
+        self.latency_ping_numbers = []
         self.latency_values = []
-        self.ping_index = 0
+        self.latency_point_sizes = []
+        self.latency_point_symbols = []
+        self.latency_point_pens = []
+        self.latency_ping_index = 0
         
         self.latency_plot = pg.PlotWidget()
         self.latency_plot.setObjectName("latency_plot")
@@ -80,6 +89,34 @@ class Dashboard(QMainWindow):
         self.latency_plot.showGrid(x=True, y=True, alpha=0.3)
         
         self.latency_curve = self.latency_plot.plot(
+            pen=pg.mkPen(color="#a8cee3", width=2),
+            symbol="o",
+            symbolSize=5,
+            connect="finite"
+        )
+        
+        # Live Jitter layout
+        self.jitter_ping_numbers = []
+        self.jitter_values = []
+        self.jitter_ping_index = 0
+        
+        self.jitter_plot = pg.PlotWidget()
+        self.jitter_plot.setObjectName("jitter_plot")
+        self.jitter_plot.setBackground("#000000")
+        
+        self.jitter_plot.setStyleSheet("""
+            QWidget#jitter_plot {
+                border: 1px solid #1e1e2f;
+        }
+        """)
+        
+        self.jitter_plot.setTitle("Live Jitter")
+        self.jitter_plot.setLabel("left", "Jitter", units="ms")
+        self.jitter_plot.setLabel("bottom", "Ping Number")
+
+        self.jitter_plot.showGrid(x=True, y=True, alpha=0.3)
+        
+        self.jitter_curve = self.jitter_plot.plot(
             pen=pg.mkPen(color="#a8cee3", width=2),
             symbol="o",
             symbolSize=5,
@@ -113,12 +150,18 @@ class Dashboard(QMainWindow):
         self.interval_input.setStyleSheet("background-color: #1e1e2f; color: white; font-size: 16px; border: 1px solid #3c3c3c; border-radius: 4px; padding: 4px;")
         self.interval_input.setFixedWidth(300)
         
+        # Status label
+        self.status = "IDLE"
+        self.output_label = QLabel()
+        self.output_label.setStyleSheet("color: #b2e034; font-size: 36px; font-style: italic; background-color: #1e1e2f; border: none; border-radius: 4px; padding: 4px;")
+        self.output_label.setAlignment(Qt.AlignCenter)
+        self.output_label.setText(self.status)
+        
         # Output text
         self.output_text = QTextEdit()
         self.output_text.setReadOnly(True)
         self.output_text.setStyleSheet("background-color: #000000; color: white; font-size: 12px; border: 1px solid #3c3c3c; border-radius: 4px; padding: 4px;")
-        self.output_text.setFixedWidth(400)
-        self.output_text.setFixedHeight(200)
+        self.output_text.document().setMaximumBlockCount(500)
         
         # Buttons
         self.start_button = QPushButton("Start")
@@ -138,6 +181,10 @@ class Dashboard(QMainWindow):
                                    QPushButton:pressed {
                                         background-color: #2c2c2c;
                                    }
+                                   QPushButton:disabled {
+                                    background-color: #222222;
+                                    color: #666666;
+                                }
                                    """)
         
         self.start_button.clicked.connect(self.start_monitoring)
@@ -159,6 +206,10 @@ class Dashboard(QMainWindow):
                                 QPushButton:pressed {
                                             background-color: #2c2c2c;
                                 }
+                                QPushButton:disabled {
+                                    background-color: #222222;
+                                    color: #666666;
+                                }
                                 """)
         
         self.stop_button.clicked.connect(self.stop_monitoring)
@@ -179,9 +230,14 @@ class Dashboard(QMainWindow):
         button_layout.addWidget(self.start_button)
         button_layout.addWidget(self.stop_button)
         
-        # output_layout.addWidget((output_label), 0, 1)
-        output_layout.addWidget((self.output_text), 1, 1)
-        output_layout.addWidget((self.latency_plot), 1, 0)
+        plots_layout.addWidget(self.latency_plot)
+        plots_layout.addWidget(self.jitter_plot)
+
+        output_details_layout.addWidget(self.output_label)
+        output_details_layout.addWidget(self.output_text)
+
+        output_layout.addLayout(plots_layout)
+        output_layout.addLayout(output_details_layout)
 
         self.stop_button.setDisabled(True)
 
@@ -203,15 +259,28 @@ class Dashboard(QMainWindow):
         if self.ping_worker is not None:
             return
         
-        self.ping_numbers.clear()
+        self.latency_ping_numbers.clear()
+        self.jitter_ping_numbers.clear()
+        
         self.latency_values.clear()
-        self.ping_index = 0
+        self.latency_point_sizes.clear()
+        self.latency_point_symbols.clear()
+        self.latency_point_pens.clear()
+        self.jitter_values.clear()
+        
+        self.latency_ping_index = 0
+        self.jitter_ping_index = 0
+        
         self.latency_curve.setData([], [])
+        self.latency_curve.setPen(pg.mkPen(color="#a8cee3", width=2))
+        self.jitter_curve.setData([], [])
+        
         self.setWindowTitle("Netpeer v" + get_version_number() + " - Monitoring: " + self.target_input.text().strip())
         
         self.ping_worker = PingWorker(target, interval)
         
-        self.ping_worker.result_ready.connect(self.update_output)
+        self.ping_worker.result_ready.connect(self.update_latency_graph)
+        self.ping_worker.result_ready.connect(self.update_jitter_graph)
         self.ping_worker.finished.connect(self.worker_finished)
         
         self.ping_worker.start()
@@ -219,11 +288,27 @@ class Dashboard(QMainWindow):
         self.start_button.setDisabled(True)
         self.stop_button.setDisabled(False)
 
-    def update_output(self, response):
+    def update_latency_graph(self, response):
         # Update the output text area with the ping result
         status = response.get("status", "unknown").upper()
+        self.status = response.get("overall_status", "UNKNOWN").upper()
+        self.output_label.setText(self.status)
+        status_color = {
+            "CALCULATING...": "#a8cee3",
+            "EXCELLENT": "#00ff00",
+            "FINE": "#b2e034",
+            "UNSTABLE": "#ffff00",
+            "POOR": "#ffa500",
+            "UNREACHABLE": "#ff0000",
+            "UNKNOWN": "#ff0000"
+        }.get(self.status, "#a8cee3")
+        self.output_label.setStyleSheet(
+            f"color: {status_color}; font-size: 36px; font-style: italic; "
+            "background-color: #1e1e2f; border: none; border-radius: 4px; padding: 4px;"
+        )
         message = response.get("error")
 
+        # If the ping was successful, display the latency in milliseconds
         if status == "SUCCESS":
             latency = response.get("latency_ms")
             message = f"{latency} ms" if latency is not None else "Reachable"
@@ -233,34 +318,74 @@ class Dashboard(QMainWindow):
         
         latency = response.get("latency_ms")
 
-        self.ping_index += 1
-        self.ping_numbers.append(self.ping_index)
+        # Update the latency graph with the new data point
+        self.latency_ping_index += 1
+        self.latency_ping_numbers.append(self.latency_ping_index)
+        
+        spike = response.get("spike", response.get("is_spike", False))
+        
+        # Update the point sizes and symbols based on whether it's a spike or not
+        self.latency_point_sizes.append(15 if spike else 5)
+        self.latency_point_symbols.append("x" if spike else "o")
+        
+        self.latency_point_pens.append(
+            pg.mkPen("#ff5555", width=2) if spike
+            else pg.mkPen("#a8cee3", width=1)
+        )
 
+        # Update the latency values
         if latency is not None:
             self.latency_values.append(latency)
         else:
             self.latency_values.append(float("nan"))
 
-        if len(self.ping_numbers) > 60:
-            self.ping_numbers.pop(0)
+        # Limit the number of points displayed on the graph to 60
+        if len(self.latency_ping_numbers) > 60:
+            self.latency_ping_numbers.pop(0)
             self.latency_values.pop(0)
-
+            self.latency_point_sizes.pop(0)
+            self.latency_point_symbols.pop(0)
+            self.latency_point_pens.pop(0)
         # Redraw the graph
         self.latency_curve.setData(
-            self.ping_numbers,
-            self.latency_values
+            self.latency_ping_numbers,
+            self.latency_values,
+            symbolSize=self.latency_point_sizes,
+            symbol=self.latency_point_symbols,
+            symbolPen=self.latency_point_pens
+        )
+    
+    def update_jitter_graph(self, response):
+        jitter = response.get("jitter_ms")
+
+        self.jitter_ping_index += 1
+        self.jitter_ping_numbers.append(self.jitter_ping_index)
+
+        if jitter is not None:
+            self.jitter_values.append(jitter)
+        else:
+            self.jitter_values.append(float("nan"))
+
+        if len(self.jitter_ping_numbers) > 60:
+            self.jitter_ping_numbers.pop(0)
+            self.jitter_values.pop(0)
+
+        # Redraw the graph
+        self.jitter_curve.setData(
+            self.jitter_ping_numbers,
+            self.jitter_values
         )
 
     def stop_monitoring(self):
         # Stop monitoring the target address
-        self.setWindowTitle("Netpeer v" + get_version_number())
-        
         if self.ping_worker is not None:
             self.ping_worker.stop()
             self.stop_button.setDisabled(True)
     
     def worker_finished(self):
         self.ping_worker = None
+        
+        self.setWindowTitle("Netpeer v" + get_version_number())
         
         self.start_button.setDisabled(False)
         self.stop_button.setDisabled(True)

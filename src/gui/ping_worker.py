@@ -10,10 +10,21 @@ class PingWorker(QThread):
         self.interval = interval
     
     def run(self):
-        from main import startup
-        startup(
+        from datetime import datetime, timezone
+        from storage.database import insert_session
+        from main import handle_ping
+
+        # Create a new monitoring session
+        session_id = insert_session(
+            self.target,
+            datetime.now(timezone.utc).isoformat()
+        )
+
+        # Start monitoring without calling terminal startup
+        handle_ping(
             self.target,
             self.interval,
+            session_id,
             self.result_ready.emit,
             self.isInterruptionRequested
         )
