@@ -1,10 +1,11 @@
-from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QTextEdit, QListWidget, QSpinBox
+from PySide6.QtWidgets import QMainWindow, QLabel, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLineEdit, QTextEdit, QSpinBox, QTabWidget
 from PySide6.QtCore import Qt
 
 import pyqtgraph as pg
 
 from main import get_version_number
 from .ping_worker import PingWorker
+from .history import HistoryWidget
 
 class Dashboard(QMainWindow):
     def __init__(self):
@@ -17,15 +18,50 @@ class Dashboard(QMainWindow):
         # 
         # Holds all widgets in VBox style
         # Window -> Navbar & Target & Interval & StartButton
-        window_container = QWidget()
-        self.setCentralWidget(window_container)
+        # window_container = QWidget()
+        # self.setCentralWidget(window_container)
         
-        window_layout = QVBoxLayout()
-        window_container.setLayout(window_layout)
+        # window_layout = QVBoxLayout()
+        # window_container.setLayout(window_layout)
+        self.tabs = QTabWidget()
+        self.tabs.setStyleSheet("""
+            QTabWidget {
+                background-color: #000000;
+                font-size: 14px;
+                font-weight: bold;
+                font-style: italic;
+                color: #b0b6cf;
+            }
+            QTabWidget::pane {
+                background-color: #000000;
+                border: 1px solid #000000;
+            }
+            QTabBar {
+                background-color: #000000;
+            }
+            QTabBar::tab {
+                background-color: #000000;
+                color: #b0b6cf;
+                border: 1px solid #090a0a;
+                padding: 6px 12px;
+            }
+            QTabBar::tab:selected {
+                color: #ffffff;
+                background-color: #191a1c;
+                border-color: #090a0a;
+            }
+        """)
+        self.setCentralWidget(self.tabs)
+        
+        live_tab = QWidget()
+        live_tab.setStyleSheet("background-color: #000000;")
+        live_layout = QVBoxLayout(live_tab)
+        
+        self.tabs.addTab(live_tab, "Live Monitor")
         
         # Navbar layout
         navbar_container = QWidget()
-        window_layout.addWidget(navbar_container)
+        live_layout.addWidget(navbar_container)
         
         navbar_layout = QHBoxLayout()
         navbar_container.setLayout(navbar_layout)
@@ -34,7 +70,7 @@ class Dashboard(QMainWindow):
         
         # Target layout
         target_container = QWidget()
-        window_layout.addWidget(target_container)
+        live_layout.addWidget(target_container)
         
         target_layout = QHBoxLayout()
         target_container.setLayout(target_layout)
@@ -42,7 +78,7 @@ class Dashboard(QMainWindow):
         
         # Button layout
         button_container = QWidget()
-        window_layout.addWidget(button_container)
+        live_layout.addWidget(button_container)
         
         button_layout = QHBoxLayout()
         button_container.setLayout(button_layout)
@@ -51,7 +87,7 @@ class Dashboard(QMainWindow):
         # Output layout
         output_container = QWidget()
         output_container.setStyleSheet("background-color: #04091c; border-radius: 0px; border: 1px solid #1e1e2f;")
-        window_layout.addWidget(output_container)
+        live_layout.addWidget(output_container)
         
         output_layout = QHBoxLayout()
         output_container.setLayout(output_layout)
@@ -71,7 +107,6 @@ class Dashboard(QMainWindow):
         self.latency_point_symbols = []
         self.latency_point_pens = []
         self.latency_ping_index = 0
-        
         self.latency_plot = pg.PlotWidget()
         self.latency_plot.setObjectName("latency_plot")
         self.latency_plot.setBackground("#000000")
@@ -99,7 +134,6 @@ class Dashboard(QMainWindow):
         self.jitter_ping_numbers = []
         self.jitter_values = []
         self.jitter_ping_index = 0
-        
         self.jitter_plot = pg.PlotWidget()
         self.jitter_plot.setObjectName("jitter_plot")
         self.jitter_plot.setBackground("#000000")
@@ -153,14 +187,54 @@ class Dashboard(QMainWindow):
         # Status label
         self.status = "IDLE"
         self.output_label = QLabel()
-        self.output_label.setStyleSheet("color: #b2e034; font-size: 36px; font-style: italic; background-color: #1e1e2f; border: none; border-radius: 4px; padding: 4px;")
+        self.output_label.setStyleSheet("color: #b2e034; font-size: 36px; background-color: #1e1e2f; border: 1px solid #3c3c3c; border-radius: 4px; padding: 4px;")
         self.output_label.setAlignment(Qt.AlignCenter)
         self.output_label.setText(self.status)
         
         # Output text
         self.output_text = QTextEdit()
         self.output_text.setReadOnly(True)
-        self.output_text.setStyleSheet("background-color: #000000; color: white; font-size: 12px; border: 1px solid #3c3c3c; border-radius: 4px; padding: 4px;")
+        self.output_text.setStyleSheet("""
+            QTextEdit {
+                background-color: #000000;
+                color: white;
+                font-size: 16px;
+                border: 1px solid #3c3c3c;
+                border-radius: 4px;
+                padding: 4px;
+            }
+            QTextEdit QScrollBar:vertical,
+            QTextEdit QScrollBar:horizontal {
+                background-color: #04091c;
+                border: none;
+            }
+            QTextEdit QScrollBar:vertical {
+                width: 12px;
+            }
+            QTextEdit QScrollBar:horizontal {
+                height: 12px;
+            }
+            QTextEdit QScrollBar::handle:vertical,
+            QTextEdit QScrollBar::handle:horizontal {
+                background-color: #3c3c3c;
+                border: none;
+                min-height: 24px;
+                min-width: 24px;
+            }
+            QTextEdit QScrollBar::add-line:vertical,
+            QTextEdit QScrollBar::sub-line:vertical,
+            QTextEdit QScrollBar::add-line:horizontal,
+            QTextEdit QScrollBar::sub-line:horizontal {
+                background: none;
+                border: none;
+            }
+            QTextEdit QScrollBar::add-page:vertical,
+            QTextEdit QScrollBar::sub-page:vertical,
+            QTextEdit QScrollBar::add-page:horizontal,
+            QTextEdit QScrollBar::sub-page:horizontal {
+                background: #000000;
+            }
+        """)
         self.output_text.document().setMaximumBlockCount(500)
         
         # Buttons
@@ -240,6 +314,11 @@ class Dashboard(QMainWindow):
         output_layout.addLayout(output_details_layout)
 
         self.stop_button.setDisabled(True)
+        
+        self.history_widget = HistoryWidget()
+        self.tabs.addTab(self.history_widget, "Session History")
+        
+        self.tabs.currentChanged.connect(self.on_tab_changed)
 
     def start_monitoring(self):
         # Start monitoring the target address with the specified interval
@@ -274,6 +353,8 @@ class Dashboard(QMainWindow):
         self.latency_curve.setData([], [])
         self.latency_curve.setPen(pg.mkPen(color="#a8cee3", width=2))
         self.jitter_curve.setData([], [])
+        self.latency_plot.enableAutoRange()
+        self.jitter_plot.enableAutoRange()
         
         self.setWindowTitle("Netpeer v" + get_version_number() + " - Monitoring: " + self.target_input.text().strip())
         
@@ -303,8 +384,8 @@ class Dashboard(QMainWindow):
             "UNKNOWN": "#ff0000"
         }.get(self.status, "#a8cee3")
         self.output_label.setStyleSheet(
-            f"color: {status_color}; font-size: 36px; font-style: italic; "
-            "background-color: #1e1e2f; border: none; border-radius: 4px; padding: 4px;"
+            f"color: {status_color}; font-size: 36px;"
+            "background-color: #1e1e2f; border: 1px solid #3c3c3c; border-radius: 4px; padding: 4px;"
         )
         message = response.get("error")
 
@@ -399,3 +480,7 @@ class Dashboard(QMainWindow):
                 self.ping_worker.wait()
 
         super().closeEvent(event)
+    
+    def on_tab_changed(self, index):
+        if self.tabs.widget(index) is self.history_widget:
+            self.history_widget.load_sessions()
