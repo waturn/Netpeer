@@ -1,5 +1,3 @@
 # Netpeer
 
-## Network Visualizer Tool
-
-WIP
+Network Visualizer Tool made in Python
